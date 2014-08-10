@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -20,10 +21,17 @@ var (
 	copyOnly    = true
 	extensions  = []string{"avi", "mp4", "mkv"}
 	seen        map[string]bool
+	copyCmd     string
 )
 
 func main() {
-	log.Println("starting...")
+	if runtime.GOOS == "windows" {
+		copyCmd = "copy"
+	} else {
+		copyCmd = "cp"
+	}
+
+	log.Printf("starting with copy command: %s..\n", copyCmd)
 	seen = make(map[string]bool)
 
 	go func() {
@@ -52,8 +60,8 @@ func detectNewFile(dir string) string {
 	files, _ := ioutil.ReadDir(fmt.Sprintf("%s/", dir))
 	for _, f := range files {
 		if !f.IsDir() && isValidExt(f.Name()) && !seen[f.Name()] {
-			fmt.Println(f.Name())
 			seen[f.Name()] = true
+			return f.Name()
 		}
 	}
 	return ""
@@ -76,7 +84,7 @@ func wait(signals ...os.Signal) error {
 }
 
 func process(filename string) error {
-	log.Printf("got %f\n", filename)
+	log.Printf("got %s\n", filename)
 
 	//TODO we will get these from API based on filename
 	show := "infinity challenge"
@@ -115,28 +123,6 @@ func moveFile(in, out string) error {
 }
 
 func copyFile(in, out string) error {
-	// open files r and w
-	r, err := os.Open(in)
-	if err != nil {
-		log.Printf("error from CopyFile: opening %s, err: %s\n", in, err)
-		return err
-	}
-	defer r.Close()
-
-	w, err := os.Create(out)
-	if err != nil {
-		log.Println("error from CopyFile: creating %s, err: %s\n", out, err)
-		return err
-	}
-	defer w.Close()
-
-	// do the actual work
-	n, err := io.Copy(w, r)
-	if err != nil {
-		log.Println("error from CopyFile: copying, err: %s\n", err)
-		return err
-	}
-
-	log.Println("Successfully copied %s to %s. %v bytes\n", in, out, n)
-	return nil
+	cpCmd := exec.Command(copyCmd, in, out)
+	return cpCmd.Run()
 }
