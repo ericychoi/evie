@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,41 +19,56 @@ import (
 )
 
 var (
+	isServer    *bool
 	destDir     = "/Users/ericchoi/tmp/dest"
 	incomingDir = "/Users/ericchoi/tmp/watch"
+	serverHost  = "localhost"
+	serverPort  = 50030
+	serverPath  = "/json/info"
 	copyOnly    = true
 	extensions  = []string{"avi", "mp4", "mkv"}
 	seen        map[string]bool
 	copyCmd     string
 )
 
+type EvieResult struct {
+	Show   string
+	Season string
+	File   string
+}
+
 func main() {
-	if runtime.GOOS == "windows" {
-		copyCmd = "copy"
+	isServer = flag.Bool("server", true, "whether app is start as an server or not")
+	if *isServer {
+		//TODO
 	} else {
-		copyCmd = "cp"
-	}
+		if runtime.GOOS == "windows" {
+			copyCmd = "copy"
+		} else {
+			copyCmd = "cp"
+		}
 
-	log.Printf("starting with copy command: %s..\n", copyCmd)
-	seen = make(map[string]bool)
+		log.Printf("starting client with copy command: %s..\n", copyCmd)
+		seen = make(map[string]bool)
 
-	go func() {
-		ticker := time.Tick(time.Millisecond * 1000)
-		for {
-			select {
-			case <-ticker:
-				filename := detectNewFile(incomingDir)
-				if filename != "" {
-					log.Println("new file:", filename)
-					err := process(filename)
-					if err != nil {
-						log.Println("error from process():", err)
+		go func() {
+			ticker := time.Tick(time.Millisecond * 1000)
+			for {
+				select {
+				case <-ticker:
+					filename := detectNewFile(incomingDir)
+					if filename != "" {
+						log.Println("new file:", filename)
+						err := process(filename)
+						if err != nil {
+							log.Println("error from process():", err)
+						}
 					}
 				}
-			}
 
-		}
-	}()
+			}
+		}()
+	}
 
 	// block. wait for sigterm or sigint
 	wait(syscall.SIGTERM, syscall.SIGINT)
@@ -87,9 +105,11 @@ func process(filename string) error {
 	log.Printf("got %s\n", filename)
 
 	//TODO we will get these from API based on filename
-	show := "infinity challenge"
-	season := "2014"
-	newFile := "infinity challenge - 2014-08-09 - something special.avi"
+	show, season, newFile, err := doEvie(filename)
+	if err != nil {
+		log.Printf("error from doEvie(): %s\n", err)
+		return err
+	}
 
 	dirPath := fmt.Sprintf("%s/%s/%s", destDir, show, season)
 	inFullname := fmt.Sprintf("%s/%s", incomingDir, filename)
@@ -97,7 +117,7 @@ func process(filename string) error {
 
 	log.Printf("dirPath: %s\t inFullname: %s\t outFullname: %s\n", dirPath, inFullname, outFullname)
 
-	err := os.MkdirAll(dirPath, os.FileMode(0755))
+	err = os.MkdirAll(dirPath, os.FileMode(0755))
 	if err != nil {
 		log.Println("error from MkdirAll(): ", err)
 		return err
@@ -107,6 +127,32 @@ func process(filename string) error {
 		return copyFile(inFullname, outFullname)
 	}
 	return moveFile(inFullname, outFullname)
+}
+
+func doEvie(filename string) (string, string, string, error) {
+	serverUrl := fmt.Sprintf("http://%s:%d%s", serverHost, serverPort, serverPath)
+	res, err := http.Get(serverUrl)
+	if err != nil {
+		log.Printf("couldn't get from %s: err: %s", serverUrl, err)
+		return "", "", "", err
+	}
+
+	data, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		log.Printf("couldn't read from res.Body(): err: %s", err)
+		return "", "", "", err
+	}
+	fmt.Printf("data: %s\n", data)
+
+	var result EvieResult
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		fmt.Printf("json unmarshall data: %s error: %s\n", data, err)
+	}
+	fmt.Printf("json: %+v\n", result)
+
+	return result.Show, result.Season, result.File, nil
 }
 
 func moveFile(in, out string) error {
