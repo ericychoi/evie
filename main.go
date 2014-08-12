@@ -23,12 +23,13 @@ var (
 	destDir     = "/Users/ericchoi/tmp/dest"
 	incomingDir = "/Users/ericchoi/tmp/watch"
 	serverHost  = "localhost"
-	serverPort  = 50030
+	serverPort  = 55555
 	serverPath  = "/json/info"
 	copyOnly    = true
 	extensions  = []string{"avi", "mp4", "mkv"}
 	seen        map[string]bool
 	copyCmd     string
+	serverUrl   string
 )
 
 type EvieResult struct {
@@ -38,9 +39,15 @@ type EvieResult struct {
 }
 
 func main() {
-	isServer = flag.Bool("server", true, "whether app is start as an server or not")
+	serverUrl := fmt.Sprintf("http://%s:%d%s", serverHost, serverPort, serverPath)
+	isServer = flag.Bool("server", false, "whether app is start as an server or not")
+	flag.Parse()
 	if *isServer {
-		//TODO
+		log.Printf("starting server on %s..\n", serverUrl)
+		err := startServer(serverPort, serverPath)
+		if err != nil {
+			log.Fatalf("couldn't startServer. err: %s", err)
+		}
 	} else {
 		if runtime.GOOS == "windows" {
 			copyCmd = "copy"
@@ -51,15 +58,16 @@ func main() {
 		log.Printf("starting client with copy command: %s..\n", copyCmd)
 		seen = make(map[string]bool)
 
-		go func() {
+		go func(serverUrl string) {
 			ticker := time.Tick(time.Millisecond * 1000)
 			for {
 				select {
 				case <-ticker:
 					filename := detectNewFile(incomingDir)
 					if filename != "" {
+						//TODO check if the file is being written to
 						log.Println("new file:", filename)
-						err := process(filename)
+						err := process(filename, serverUrl)
 						if err != nil {
 							log.Println("error from process():", err)
 						}
@@ -67,7 +75,7 @@ func main() {
 				}
 
 			}
-		}()
+		}(serverUrl)
 	}
 
 	// block. wait for sigterm or sigint
@@ -101,11 +109,14 @@ func wait(signals ...os.Signal) error {
 	return nil
 }
 
-func process(filename string) error {
+func process(filename, serverUrl string) error {
 	log.Printf("got %s\n", filename)
 
 	//TODO we will get these from API based on filename
-	show, season, newFile, err := doEvie(filename)
+
+	log.Printf("serverUrl: %s\n", serverUrl)
+
+	show, season, newFile, err := doEvie(filename, serverUrl)
 	if err != nil {
 		log.Printf("error from doEvie(): %s\n", err)
 		return err
@@ -129,8 +140,7 @@ func process(filename string) error {
 	return moveFile(inFullname, outFullname)
 }
 
-func doEvie(filename string) (string, string, string, error) {
-	serverUrl := fmt.Sprintf("http://%s:%d%s", serverHost, serverPort, serverPath)
+func doEvie(filename, serverUrl string) (string, string, string, error) {
 	res, err := http.Get(serverUrl)
 	if err != nil {
 		log.Printf("couldn't get from %s: err: %s", serverUrl, err)
