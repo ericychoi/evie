@@ -20,16 +20,17 @@ import (
 
 var (
 	isServer    *bool
-	destDir     = "/Users/ericchoi/tmp/dest"
-	incomingDir = "/Users/ericchoi/tmp/watch"
-	serverHost  = "localhost"
-	serverPort  = 55555
-	serverPath  = "/json/info"
-	copyOnly    = true
-	extensions  = []string{"avi", "mp4", "mkv"}
-	seen        map[string]bool
-	copyCmd     string
-	serverUrl   string
+	destDir     *string
+	incomingDir *string
+	serverHost  *string
+	serverPort  *int
+	serverPath  *string
+	copyOnly    *bool
+
+	extensions = []string{"avi", "mp4", "mkv"}
+	seen       map[string]bool
+	copyCmd    string
+	serverUrl  string
 )
 
 type EvieResult struct {
@@ -39,12 +40,26 @@ type EvieResult struct {
 }
 
 func main() {
-	serverUrl := fmt.Sprintf("http://%s:%d%s", serverHost, serverPort, serverPath)
-	isServer = flag.Bool("server", false, "whether app is start as an server or not")
+	serverHost = flag.String("host", "localhost", "host for Evie server")
+	serverPort = flag.Int("port", 55555, "port for Evie server")
+	serverPath = flag.String("path", "/json/info", "path for Evie server")
+	destDir = flag.String("dest", "", "destination dir path")
+	incomingDir = flag.String("incoming", "", "incoming dir path")
+	copyOnly = flag.Bool("copy-only", false, "whether app is to copy only (no delete)")
+	isServer = flag.Bool("server", false, "whether app is to start as an server or not")
 	flag.Parse()
+	if !*isServer && *destDir == "" {
+		log.Fatalln("dest option required")
+	}
+	if !*isServer && *incomingDir == "" {
+		log.Fatalln("incoming option required")
+	}
+
+	serverUrl := fmt.Sprintf("http://%s:%d%s", *serverHost, *serverPort, *serverPath)
+
 	if *isServer {
 		log.Printf("starting server on %s..\n", serverUrl)
-		err := startServer(serverPort, serverPath)
+		err := startServer(*serverPort, *serverPath)
 		if err != nil {
 			log.Fatalf("couldn't startServer. err: %s", err)
 		}
@@ -63,13 +78,16 @@ func main() {
 			for {
 				select {
 				case <-ticker:
-					filename := detectNewFile(incomingDir)
-					if filename != "" {
+					filename := detectNewFile(*incomingDir)
+					fullPath := fmt.Sprintf("%s/%s", *incomingDir, filename)
+					if filename != "" && !isOpen(fullPath) {
 						//TODO check if the file is being written to
-						log.Println("new file:", filename)
+						log.Printf("new file: %s\n", fullPath)
 						err := process(filename, serverUrl)
 						if err != nil {
 							log.Println("error from process():", err)
+						} else {
+							log.Printf("successfully processed %s\n", filename)
 						}
 					}
 				}
@@ -91,6 +109,17 @@ func detectNewFile(dir string) string {
 		}
 	}
 	return ""
+}
+
+func isOpen(file string) bool {
+	//TODO test this in windows
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_SYNC, 0755)
+	defer f.Close()
+	if err == nil {
+		return false
+	}
+	log.Printf("can't open %s for writing. err %s. this is good.\n", file, err)
+	return true
 }
 
 func isValidExt(fullName string) bool {
@@ -122,8 +151,8 @@ func process(filename, serverUrl string) error {
 		return err
 	}
 
-	dirPath := fmt.Sprintf("%s/%s/%s", destDir, show, season)
-	inFullname := fmt.Sprintf("%s/%s", incomingDir, filename)
+	dirPath := fmt.Sprintf("%s/%s/%s", *destDir, show, season)
+	inFullname := fmt.Sprintf("%s/%s", *incomingDir, filename)
 	outFullname := fmt.Sprintf("%s/%s", dirPath, newFile)
 
 	log.Printf("dirPath: %s\t inFullname: %s\t outFullname: %s\n", dirPath, inFullname, outFullname)
@@ -134,7 +163,7 @@ func process(filename, serverUrl string) error {
 		return err
 	}
 
-	if copyOnly {
+	if *copyOnly {
 		return copyFile(inFullname, outFullname)
 	}
 	return moveFile(inFullname, outFullname)
