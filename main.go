@@ -64,13 +64,7 @@ func main() {
 			log.Fatalf("couldn't startServer. err: %s", err)
 		}
 	} else {
-		if runtime.GOOS == "windows" {
-			copyCmd = "copy"
-		} else {
-			copyCmd = "cp"
-		}
-
-		log.Printf("starting client with copy command: %s..\n", copyCmd)
+		log.Printf("starting client..\n")
 		seen = make(map[string]bool)
 
 		go func(serverUrl string) {
@@ -208,6 +202,17 @@ func moveFile(in, out string) error {
 }
 
 func copyFile(in, out string) error {
-	cpCmd := exec.Command(copyCmd, in, out)
-	return cpCmd.Run()
+	log.Printf("in copyFile in: %s out: %s\n", in, out)
+
+	var copyCmd exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		//TODO make the directory path separator \ for windows, also wrap the path in quotes for windows
+		copyCmd = exec.Command("cmd", "/C", "copy", in, out)
+	} else {
+		copyCmd = exec.Command("cp", in, out)
+	}
+
+	copyCmd = append(copyCmd.Args, in, out)
+	return copyCmd.Run()
 }
