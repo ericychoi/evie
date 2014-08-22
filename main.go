@@ -42,7 +42,7 @@ type EvieResult struct {
 func main() {
 	serverHost = flag.String("host", "localhost", "host for Evie server")
 	serverPort = flag.Int("port", 55555, "port for Evie server")
-	serverPath = flag.String("path", "/json/info", "path for Evie server")
+	serverPath = flag.String("path", "/json/info/", "path for Evie server")
 	destDir = flag.String("dest", "", "destination dir path")
 	incomingDir = flag.String("incoming", "", "incoming dir path")
 	copyOnly = flag.Bool("copy-only", false, "whether app is to copy only (no delete)")
