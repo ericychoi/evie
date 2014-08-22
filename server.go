@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 )
 
 func startServer(port int, path string) error {
@@ -13,10 +14,12 @@ func startServer(port int, path string) error {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("path: %s\n", r.RequestURI)
+	fileName := "TestShowFilename_" + fmt.Sprintf("%d", time.Now().Unix())
 	result := EvieResult{
 		Show:   "TestShow",
 		Season: "TestShowSeason",
-		File:   "TestShowFilename",
+		File:   fileName,
 	}
 
 	json, err := json.Marshal(result)

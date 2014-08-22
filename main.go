@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -27,9 +28,8 @@ var (
 	serverPath  *string
 	copyOnly    *bool
 
-	extensions = []string{"avi", "mp4", "mkv"}
+	extensions = []string{"avi", "mp4", "mkv", "m4v"}
 	seen       map[string]bool
-	copyCmd    string
 	serverUrl  string
 )
 
@@ -164,7 +164,7 @@ func process(filename, serverUrl string) error {
 }
 
 func doEvie(filename, serverUrl string) (string, string, string, error) {
-	res, err := http.Get(serverUrl)
+	res, err := http.Get(serverUrl + fmt.Sprintf("/%s", urlEncode(filename)))
 	if err != nil {
 		log.Printf("couldn't get from %s: err: %s", serverUrl, err)
 		return "", "", "", err
@@ -188,6 +188,22 @@ func doEvie(filename, serverUrl string) (string, string, string, error) {
 	return result.Show, result.Season, result.File, nil
 }
 
+func urlEncode(in string) string {
+	/*
+		if utf8.RuneCountInString(in) > 0 {
+
+					buf := make([]byte, 100)
+					n := utf8.EncodeRune(buf, in)
+			if n <= 0 {
+				log.Printf("couldn't encode %s into utf-8\n", in)
+				return ""
+			}
+			return url.QueryEscape(string(buf))
+		}
+	*/
+	return url.QueryEscape(in)
+}
+
 func moveFile(in, out string) error {
 	err := copyFile(in, out)
 	if err != nil {
@@ -204,15 +220,14 @@ func moveFile(in, out string) error {
 func copyFile(in, out string) error {
 	log.Printf("in copyFile in: %s out: %s\n", in, out)
 
-	var copyCmd exec.Cmd
+	var copyCmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
 		//TODO make the directory path separator \ for windows, also wrap the path in quotes for windows
-		copyCmd = exec.Command("cmd", "/C", "copy", in, out)
+		copyCmd = exec.Command("cmd", `/C`, "copy", in, out)
 	} else {
 		copyCmd = exec.Command("cp", in, out)
 	}
 
-	copyCmd = append(copyCmd.Args, in, out)
 	return copyCmd.Run()
 }
