@@ -1,1 +1,1 @@
-web: evie
+web: evie --server
