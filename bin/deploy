@@ -1,4 +1,5 @@
 #!/bin/sh
 
 docker build -t ericychoi/evie .
+docker rm -f evie
 docker run -d -p 55555:55555 --name evie ericychoi/evie
