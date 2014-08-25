@@ -1,6 +1,6 @@
 FROM google/golang
 
-MAINTAINER ericychoi@gmail.com
+MAINTAINER eric.yongjun.choi@gmail.com
 
 RUN go get -u github.com/ericychoi/evie
 
