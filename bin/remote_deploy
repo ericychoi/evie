@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# TODO - test this
+ssh do "cd ~/evie && git pull && bin/deploy"
