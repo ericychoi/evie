@@ -2,7 +2,7 @@
 
 docker build -t ericychoi/redis docker/redis
 docker rm -f redis 2>/dev/null
-docker run -d --name redis ericychoi/redis
+docker run -d --name redis -v $PWD/db:/var/lib/redis ericychoi/redis
 
 docker build -t ericychoi/webdis docker/webdis
 docker rm -f webdis 2>/dev/null
@@ -11,3 +11,4 @@ docker run -d --name webdis --link redis:redis -p 7379:7379 ericychoi/webdis
 docker build -t ericychoi/evie .
 docker rm -f evie 2>/dev/null
 docker run -d -p 55555:55555 --name evie ericychoi/evie
+

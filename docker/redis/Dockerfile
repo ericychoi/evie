@@ -2,9 +2,13 @@ FROM ubuntu:14.04
 
 MAINTAINER eric.yongjun.choi@gmail.com
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y redis-server
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update
+RUN apt-get install -y redis-server
 
 EXPOSE 6379
-CMD ["--save 1 1"]
+
+CMD ["--save 1 1", "--dir '/var/lib/redis'"]
+
 ENTRYPOINT  ["/usr/bin/redis-server"]
