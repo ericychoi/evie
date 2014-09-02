@@ -11,4 +11,3 @@ docker run -d --name webdis --link redis:redis -p 7379:7379 ericychoi/webdis
 docker build -t ericychoi/evie .
 docker rm -f evie 2>/dev/null
 docker run -d -p 55555:55555 --name evie ericychoi/evie
-
