@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"log"
+	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/go-fsnotify/fsnotify"
 )
@@ -61,7 +64,6 @@ func main() {
 						}
 					}
 				}
-			}
 			case err := <-watcher.Errors:
 				log.Println("fsnotify error:", err)
 			}
