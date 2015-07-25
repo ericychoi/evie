@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"syscall"
 
 	"github.com/go-fsnotify/fsnotify"
 )
@@ -16,6 +15,8 @@ var (
 
 	extensions = []string{"avi", "mp4", "mkv", "m4v"}
 )
+
+// usage: ./evie --dest ./dest --incoming ./watch --server evie.rookie1.co:3000/match --copy
 
 func main() {
 	destDir = flag.String("dest", "", "destination dir path")
@@ -47,19 +48,20 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				log.Println("fsnotify event:", event)
-				if event.Op&fsnotify.Chmod == fsnotify.Chmod &&
-					event.Op&syscall.IN_CLOSE_WRITE == syscall.IN_CLOSE_WRITE {
-					log.Println("writing to file:", event.Name)
-				}
-				if event.Op&fsnotify.Rename == fsnotify.Write {
-					log.Println("renaming file:", event.Name)
-					log.Println("calling ktvo")
-					err := ktvo.Do(event.Name)
-					if err != nil {
-						log.Println("error from ktvo: " + err.Error())
+				/* transmission renaming the torrent after it's done will follow this pattern
+				2015/07/23 23:34:41 fsnotify event: "watch/ubuntu-14.04.2-server-amd64.iso.part": RENAME, op: 1000
+				2015/07/23 23:34:41 fsnotify event: "watch/ubuntu-14.04.2-server-amd64.iso": CREATE, op: 1 */
+				//log.Printf("fsnotify event: %s op: %b\n", event, event.Op)
+				if event.Op&fsnotify.Create == fsnotify.Create {
+					log.Printf("file created: %s, calling ktvo\n", event.Name)
+					if isValidExt(event.Name) {
+						err := ktvo.Do(event.Name)
+						if err != nil {
+							log.Println("error from ktvo: " + err.Error())
+						}
 					}
 				}
+			}
 			case err := <-watcher.Errors:
 				log.Println("fsnotify error:", err)
 			}
@@ -72,4 +74,12 @@ func main() {
 	}
 
 	<-done
+}
+
+func isValidExt(fullName string) bool {
+	regex := regexp.MustCompile(strings.Join(extensions, "|"))
+	if regex.MatchString(filepath.Ext(fullName)) {
+		return true
+	}
+	return false
 }

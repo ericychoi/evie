@@ -27,9 +27,8 @@ type EvieResult struct {
 
 // expects full filepath
 func (k *KTVOrganizer) Do(filename string) error {
-	log.Printf("got %s\n", filename)
+	log.Printf("ktvo: got %s\n", filename)
 
-	//TODO we will get these from API based on filename
 	show, season, newFile, err := k.getShowInfo(filename)
 	if err != nil {
 		log.Printf("error from getShowInfo(): %s\n", err)
