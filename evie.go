@@ -58,7 +58,8 @@ func main() {
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					log.Printf("file created: %s, calling ktvo\n", event.Name)
 					if isValidExt(event.Name) {
-						err := ktvo.Do(event.Name)
+						_, file := filepath.Split(event.Name)
+						err := ktvo.Do(file)
 						if err != nil {
 							log.Println("error from ktvo: " + err.Error())
 						}
