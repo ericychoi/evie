@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -55,16 +56,22 @@ func (k *KTVOrganizer) Do(filename string) error {
 }
 
 func (k *KTVOrganizer) getShowInfo(filename string) (string, string, string, error) {
-	res, err := http.Get(k.serverUrl + fmt.Sprintf("/%s", url.QueryEscape(filename)))
+	fullUrl := k.serverUrl + fmt.Sprintf("?f=%s", url.QueryEscape(filename))
+	res, err := http.Get(fullUrl)
 	if err != nil {
-		log.Printf("couldn't get from %s: err: %s", serverUrl, err)
+		log.Printf("couldn't get from %s: err: %s\n", fullUrl, err.Error())
 		return "", "", "", err
+	}
+
+	if res.StatusCode != 200 {
+		log.Printf("status code not 200 from %s, statusCode: %d\n", fullUrl, res.StatusCode)
+		return "", "", "", errors.New("error from Evie")
 	}
 
 	data, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
-		log.Printf("couldn't read from res.Body(): err: %s", err)
+		log.Printf("couldn't read from res.Body(): err: %s", err.Error())
 		return "", "", "", err
 	}
 	fmt.Printf("data: %s\n", data)
@@ -72,7 +79,7 @@ func (k *KTVOrganizer) getShowInfo(filename string) (string, string, string, err
 	var result EvieResult
 	err = json.Unmarshal(data, &result)
 	if err != nil {
-		fmt.Printf("json unmarshall data: %s error: %s\n", data, err)
+		fmt.Printf("json unmarshall data: %s error: %s\n", data, err.Error())
 	}
 	fmt.Printf("json: %+v\n", result)
 
@@ -82,11 +89,11 @@ func (k *KTVOrganizer) getShowInfo(filename string) (string, string, string, err
 func moveFile(in, out string) error {
 	err := copyFile(in, out)
 	if err != nil {
-		log.Printf("error from moveFile: copyFile returns %s", err)
+		log.Printf("error from moveFile: copyFile returns %s", err.Error())
 	} else {
 		err := os.Remove(in)
 		if err != nil {
-			log.Printf("error from os.Remove() while attempting to remove %s. err: %s\n", in, err)
+			log.Printf("error from os.Remove() while attempting to remove %s. err: %s\n", in, err.Error())
 		}
 	}
 	return err
