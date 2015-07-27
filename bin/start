@@ -1,4 +1,4 @@
 #!/bin/sh
 
 echo "starting evie client"
-./evie_linux_amd64 --dest /home/eric/backup_media/media/TV\ -\ Korean --incoming /home/eric/Downloads/torrent --server http://evie.rookie1.co:3000/match | logger -t "evie" &
+nohup ./evie_linux_amd64 --dest /home/eric/backup_media/media/TV\ -\ Korean --incoming /home/eric/Downloads/torrent --server http://evie.rookie1.co:3000/match &
