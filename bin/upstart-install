@@ -1,0 +1,2 @@
+mkdir -p /home/eric/git/evie/log
+sudo ln -s /home/eric/git/evie/conf/upstart.conf /etc/init/evie.conf
