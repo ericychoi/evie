@@ -108,7 +108,7 @@ func copyFile(in, out string) error {
 		//TODO make the directory path separator \ for windows, also wrap the path in quotes for windows
 		copyCmd = exec.Command("cmd", `/C`, "copy", in, out)
 	} else {
-		copyCmd = exec.Command("cp", in, out)
+		copyCmd = exec.Command("cp", `-p`, in, out)
 	}
 
 	return copyCmd.Run()
